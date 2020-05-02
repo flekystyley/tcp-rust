@@ -1,0 +1,8 @@
+[package]
+name = "tcp-rust"
+version = "0.1.0"
+authors = ["flekystyley <flekystyley@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+tun-tap = "0.1.2"
