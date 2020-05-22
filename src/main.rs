@@ -11,11 +11,11 @@ struct Quad {
 }
 
 fn main() -> io::Result<()> {
-    let mut connections: HashMap<Quad, tcp::State> = Default::default();
+    let mut connections: HashMap<Quad, tcp::Connection> = Default::default();
     /*
      * Create Virtual Interface.
      */
-    let nic = tun_tap::Iface::new("tun_0", tun_tap::Mode::Tun)?;
+    let mut nic = tun_tap::Iface::new("tun_0", tun_tap::Mode::Tun)?;
     // 1500 = MTU Usually Packet Size, 4 = Header Size
 
     // Flags [2 bytes]
@@ -47,7 +47,7 @@ fn main() -> io::Result<()> {
                         connections.entry(Quad {
                             src: (src, tcp_header.source_port()),
                             dst: (dst, tcp_header.destination_port()),
-                        }).or_default().on_packet(ip_header, tcp_header, &buf[datai..nbytes]);
+                        }).or_default().on_packet(&mut nic, ip_header, tcp_header, &buf[datai..nbytes])?;
                         // (srcip, srcport, dstip, dstport)
                     }
                     Err(e) => {
