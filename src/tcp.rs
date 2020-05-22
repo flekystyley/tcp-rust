@@ -9,12 +9,14 @@ pub enum State {
 
 pub struct Connection {
     state: State,
+    send: SendSequence,
+    recv: ReceiveSequence,
 }
 
 /// State of the Send Sequence Space (RFC 793 S3.2 F4)
 ///
 /// ```
-///         1         2          3          4
+///       1         2          3          4
 ///   ----------|----------|----------|----------
 ///            SND.UNA    SND.NXT    SND.UNA
 ///                                 +SND.WND
@@ -40,6 +42,19 @@ struct SendSequence {
     iss: usize,
 }
 
+
+/// State of the Receive Sequence (RFC 793 S3.2 F5)
+/// 
+/// ```
+///        1          2          3
+///    ----------|----------|----------
+///          RCV.NXT    RCV.NXT
+///                    +RCV.WND
+///
+/// 1 - old sequence numbers which have been acknowledged
+/// 2 - sequence numbers allowed for new reception
+/// 3 - future sequence numbers which are not yet allowed
+/// ```
 struct ReceiveSequnece {
     /// receive next
     next: usize,
@@ -68,7 +83,7 @@ impl State {
         data: &'a [u8]
     ) -> io::Result<usize>{
         let mut buf = [0u8; 1500];
-        match *self {
+        match self.state {
             State::Closed => {
                 return Ok(0);
             }
@@ -77,13 +92,22 @@ impl State {
                     return Ok(0);
                 }
 
+                // keep track of sender info
+                self.recv.next = tcp_header.sequence_number + 1;
+                self.windows = tcp_header.window_size;
+                self.recv.irs = tcp_header.sequence_number;
+
+                // decide on stuff sending them
+                
+
                 // need to start establishing a connection
                 let mut syn_ack = etherparse::TcpHeader::new(
                     tcp_header.destination_port(), 
                     tcp_header.source_port(),
-                    unimplemented!(),
-                    unimplemented!(),
+                    0,
+                    10,
                 );
+                syn_ack.acknowledgement_number = self.recv.next;
                 syn_ack.syn = true; 
                 syn_ack.ack = true;
                 let mut ip = etherparse::Ipv4Header::new(
